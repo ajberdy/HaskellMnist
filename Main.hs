@@ -1,9 +1,12 @@
 import MnistLoader
+import Filtering
 
 main :: IO ()
 main = do
   labeled <- readIDXData' trainLabels trainImages
   let (labels, images) = unzip $ take 100 labeled
-  let image1 = head images
-  let px0 = Pixel 128
-  print $ prominence px0 images
+  -- print $ take 5 labels
+
+  -- let pixel_activations = activations (Pixel 12) (head images)
+  -- print $ zip $ pixel_activations [0..255]
+  print "Success"
