@@ -1,3 +1,3 @@
-# Haskell Mnist classifier
+# Intelligence Basis
 
-The goal of this project is to experiment with a bottom up knowledge representation model on the Mnist data, and to practice Haskell..
+Novel bottom-up approach to knowledge representation, starting with some experiments on Mnist
