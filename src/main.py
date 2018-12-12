@@ -1,17 +1,22 @@
+#!/usr/bin/env python
+
 import sys, os
+
+from sklearn import svm, metrics
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
-
-from python_stuff.load_mnist import load_mnist
-import python_stuff.FeatureExtraction as fe
+from src.load_mnist import load_mnist
+import src.FeatureExtraction as fe
 
 
 def main(argv: []):
     train_images, train_labels, test_images, test_labels = load_mnist()
-    image = train_images[1]
+    # image = train_images[1]
     # pgl = fe.PixelgramLearner(epsilon=.9)   # very generous epsilon
     # pgl.learn_zero_order([image])
     # fe.show_filters(image, pgl.known_grams, pgl._weights)

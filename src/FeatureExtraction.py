@@ -5,10 +5,8 @@ import itertools
 import math
 
 import matplotlib.pyplot as plt
-# from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import numpy as np
-from sklearn.feature_selection import mutual_info_classif
 
 
 class Offset:
@@ -59,6 +57,12 @@ class Pixel:
             raise NotImplementedError()
         return self.pixel == other.pixel
 
+    def __mul__(self, other):
+        return self.alignment(other)
+
+    def __rmul__(self, other):
+        return self * other
+
 
 class PosPixel(Pixel):
     """ fixed-position pixel """
@@ -72,7 +76,7 @@ class PosPixel(Pixel):
         return f"PosPixel({self.pixel:.2f})_[{self.r:.2f}, {self.c:.2f}]"
 
     def alignment(self, other):
-        pos_alignment = (1 - math.sqrt((self.r - other.r)**2 + (self.c - other.c)**2) / (28 * math.sqrt(2))) ** 2
+        pos_alignment = (1 - math.sqrt((self.r - other.r)**2 + (self.c - other.c)**2) / (28 * math.sqrt(2)))
         intense_alignment = super().alignment(other)
         pos_relative_sig = .5
         return (1 - pos_relative_sig) * intense_alignment + pos_relative_sig * pos_alignment
@@ -81,6 +85,9 @@ class PosPixel(Pixel):
         self.pixel = (1 - weight) * self.pixel + weight * other.pixel
         self.r = (1 - weight) * self.r + weight * other.r
         self.c = (1 - weight) * self.c + weight * other.c
+
+    def __hash__(self):
+        return hash((self.pixel, self.r, self.c))
 
 
 def mutual_info_alignment_prior(images):
@@ -180,8 +187,10 @@ class PixelgramLearner:
         """
         weight = self._weights[that]
         del self._weights[that]
+        self.known_grams.remove(that)
         that.adjust(this, weight=by_how_much/(weight + by_how_much))
         self._weights[that] = weight + by_how_much
+        self.known_grams.add(that)
 
     def this_is_new(self, pixel):
         """
