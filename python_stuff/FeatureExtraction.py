@@ -2,6 +2,7 @@
 some science
 """
 import itertools
+import math
 
 import matplotlib.pyplot as plt
 # from mpl_toolkits.mplot3d import Axes3D
@@ -63,11 +64,23 @@ class PosPixel(Pixel):
     """ fixed-position pixel """
 
     def __init__(self, pixel, ix):
-        self.ix = ix
+        self.r = ix // 28
+        self.c = ix % 28
         super().__init__(pixel)
 
     def __repr__(self):
-        return f"PosPixel({self.pixel:.2f})_[{self.ix}]"
+        return f"PosPixel({self.pixel:.2f})_[{self.r:.2f}, {self.c:.2f}]"
+
+    def alignment(self, other):
+        pos_alignment = (1 - math.sqrt((self.r - other.r)**2 + (self.c - other.c)**2) / (28 * math.sqrt(2))) ** 2
+        intense_alignment = super().alignment(other)
+        pos_relative_sig = .5
+        return (1 - pos_relative_sig) * intense_alignment + pos_relative_sig * pos_alignment
+
+    def adjust(self, other, weight=.5):
+        self.pixel = (1 - weight) * self.pixel + weight * other.pixel
+        self.r = (1 - weight) * self.r + weight * other.r
+        self.c = (1 - weight) * self.c + weight * other.c
 
 
 def mutual_info_alignment_prior(images):
@@ -95,6 +108,7 @@ class PixelgramLearner:
         self.epsilon = epsilon
         self.known_grams = set()
         self._weights = {}
+        self.min_weight = self.epsilon * 10
 
     def learn_zero_order(self, images):
         for image in images:
@@ -107,7 +121,29 @@ class PixelgramLearner:
                 else:
                     self.this_is_new(pixel)
 
-    def what_is_this(self, pixel_cluster, weight_priority=True):
+    def learn_zero_order_pos(self, images):
+        for i_ix, image in enumerate(images):
+            print(i_ix, end=',', flush=True)
+            for ix, pix in enumerate(image.flat):
+                pixel = PosPixel(pix, ix)
+                what_it_was, how_closely = self.what_is_this(pixel)
+
+                if how_closely > 1 - self.epsilon:
+                    self.this_is_that(pixel, what_it_was, how_closely)
+                else:
+                    self.this_is_new(pixel)
+
+            to_remove = set()
+            for gram, weight in self._weights.items():
+                if weight < self.min_weight:
+                    to_remove.add(gram)
+
+            while to_remove:
+                gram = to_remove.pop()
+                del self._weights[gram]
+                self.known_grams.remove(gram)
+
+    def what_is_this(self, pixel_cluster):
         """
         out of what is known, what could this thing be
 
@@ -142,11 +178,9 @@ class PixelgramLearner:
         we've decided that this is that, now adjust our knowledge accordingly
 
         """
-        # print(this, that)
-        # print(self._weights)
         weight = self._weights[that]
         del self._weights[that]
-        that.adjust(this, weight=by_how_much/2)
+        that.adjust(this, weight=by_how_much/(weight + by_how_much))
         self._weights[that] = weight + by_how_much
 
     def this_is_new(self, pixel):
@@ -180,6 +214,20 @@ def show_filters(image, pixels, weights, show=True):
         plt.show()
 
 
+def show_pos_filters(image, pixels, weights, show=True):
+    pixels = iter(pixels)
+    r, c = 5, 5
+    fig, axes = plt.subplots(r, c, figsize=(10, 10))
+    fig.tight_layout()
+    pixels = sorted(pixels, key=weights.get, reverse=True)
+    for pixel, (x, y) in zip(pixels, itertools.product(range(r), range(c))):
+        activations = np.array([pixel.alignment(PosPixel(x, ix)) for ix, x in enumerate(image.flat)]).reshape([28, 28])
+        axes[x,y].contourf(np.arange(28), np.arange(27, -1, -1), activations, cmap=cm.coolwarm)
+        axes[x,y].set_title(f"{pixel}: weight = {weights[pixel]:.2f}", fontsize=8)
+    if show:
+        plt.show()
+
+
 def activation(x, y):
     if x == y:
         return 1
@@ -202,5 +250,26 @@ def visualize_alignments():
 
     fig.colorbar(surf, shrink=0.5, spacing='proportional')
     plt.title("Pixel Alignment Prior")
+
+    plt.show()
+
+
+def visualize_pos_alignments():
+    # plt.ion()
+    # plt.cla()
+    fig, axes = plt.subplots(10, 10)
+
+    X = np.arange(0, 28, 1)
+    Y = np.arange(0, 28, 1)
+    Z = np.empty([28, 28])
+
+    for iix, intensity in enumerate(np.linspace(0, 1, 10)):
+        for jix, other_intensity in enumerate(np.linspace(0, 1, 10)):
+            for i, j in itertools.product(range(28), repeat=2):
+                Z[i][j] = PosPixel(other_intensity, i*28 + j).alignment(PosPixel(intensity, 406))
+            surf = axes[iix, jix].contourf(X, Y, Z, cmap=cm.coolwarm)
+
+
+    plt.suptitle("Pixel Positional Alignment Prior")
 
     plt.show()

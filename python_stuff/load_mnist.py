@@ -3,6 +3,7 @@ import os
 from urllib.request import urlretrieve
 import numpy as np
 
+
 def load_mnist(path=None):
     r"""Return (train_images, train_labels, test_images, test_labels).
 
