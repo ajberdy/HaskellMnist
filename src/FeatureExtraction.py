@@ -117,6 +117,10 @@ class PixelgramLearner:
         self._weights = {}
         self.min_weight = self.epsilon * 10
 
+    @property
+    def iterbasis(self):
+        return sorted(self._weights.items(), key=lambda x: x[1], reverse=True)
+
     def learn_zero_order(self, images):
         for image in images:
             for pix in image.flat:
@@ -223,16 +227,36 @@ def show_filters(image, pixels, weights, show=True):
         plt.show()
 
 
-def show_pos_filters(image, pixels, weights, show=True):
-    pixels = iter(pixels)
+def show_pos_filters(image, pgl, show=True):
     r, c = 5, 5
     fig, axes = plt.subplots(r, c, figsize=(10, 10))
     fig.tight_layout()
-    pixels = sorted(pixels, key=weights.get, reverse=True)
-    for pixel, (x, y) in zip(pixels, itertools.product(range(r), range(c))):
+    for (pixel, weight), (x, y) in zip(pgl.iterbasis, itertools.product(range(r), range(c))):
         activations = np.array([pixel.alignment(PosPixel(x, ix)) for ix, x in enumerate(image.flat)]).reshape([28, 28])
         axes[x,y].contourf(np.arange(28), np.arange(27, -1, -1), activations, cmap=cm.coolwarm)
-        axes[x,y].set_title(f"{pixel}: weight = {weights[pixel]:.2f}", fontsize=8)
+        axes[x,y].set_title(f"{pixel}: weight = {weight:.2f}", fontsize=8)
+    if show:
+        plt.show()
+
+
+def show_basis_segmentation(image, pgl: PixelgramLearner, show=True):
+    coloriter = list(iter(cm.tab10(np.linspace(0, 1, 10))))
+    what_are_they = np.empty(784)
+    heatmap = np.empty([784, 4])
+
+    basis_ixs = dict((b, i) for i, (b, __) in enumerate(pgl.iterbasis))
+
+    for i, pixel in enumerate(image.flat):
+        what_is, how_much = pgl.what_is_this(PosPixel(pixel, i))
+        what_are_they[i] = basis_ixs[what_is] if what_is is not None else -1
+        if what_is is None or what_are_they[i] >= 10:
+            heatmap[i] = [0, 0, 0, 1]
+        else:
+            heatmap[i] = coloriter[basis_ixs[what_is]]
+            # heatmap[i][3] = .5 * (1 + how_much)
+
+    plt.imshow(heatmap.reshape([28, 28, 4]))
+    # plt.colorbar(shrink=0.5, spacing='proportional')
     if show:
         plt.show()
 
