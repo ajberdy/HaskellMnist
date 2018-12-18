@@ -154,6 +154,8 @@ class PixelgramLearner:
                 del self._weights[gram]
                 self.known_grams.remove(gram)
 
+        print("done")
+
     def what_is_this(self, pixel_cluster):
         """
         out of what is known, what could this thing be
@@ -254,6 +256,10 @@ def show_basis_segmentation(image, pgl: PixelgramLearner, show=True):
         else:
             heatmap[i] = coloriter[basis_ixs[what_is]]
             # heatmap[i][3] = .5 * (1 + how_much)
+
+    # heatmap = heatmap.reshape([28,28,4])
+    # for i, color in enumerate(coloriter):
+    #     heatmap[:, 2*i:2*i + 2] = color
 
     plt.imshow(heatmap.reshape([28, 28, 4]))
     # plt.colorbar(shrink=0.5, spacing='proportional')
